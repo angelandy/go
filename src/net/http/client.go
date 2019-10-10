@@ -606,6 +606,17 @@ func (c *Client) do(req *Request) (retres *Response, reterr error) {
 		// For all but the first request, create the next
 		// request hop and replace req.
 		if len(reqs) > 0 {
+			
+			err = c.checkRedirect(req, reqs)
+
+			// Sentinel error to let users select the
+			// previous response, without closing its
+			// body. See Issue 10069.
+			if err == ErrUseLastResponse {
+				return resp, nil
+			}
+
+			
 			loc := resp.Header.Get("Location")
 			if loc == "" {
 				resp.closeBody()
@@ -654,14 +665,6 @@ func (c *Client) do(req *Request) (retres *Response, reterr error) {
 			// request URL to the new one, if it's not https->http:
 			if ref := refererForURL(reqs[len(reqs)-1].URL, req.URL); ref != "" {
 				req.Header.Set("Referer", ref)
-			}
-			err = c.checkRedirect(req, reqs)
-
-			// Sentinel error to let users select the
-			// previous response, without closing its
-			// body. See Issue 10069.
-			if err == ErrUseLastResponse {
-				return resp, nil
 			}
 
 			// Close the previous response's body. But
